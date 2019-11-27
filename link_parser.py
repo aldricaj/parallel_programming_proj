@@ -1,9 +1,6 @@
 import requests
 import bs4
-r = requests.get("https://en.wikipedia.org/wiki/Littlemore_Priory_scandals#Atwater_investigates,_1517")
-html = r.text
-parser = bs4.BeautifulSoup(html, features='html.parser')
-links = list(set(parser.find_all('a'))) # removes duplicates and then converts back to list
+
 
 def filter_links(link):
     if not link.get('href'):
@@ -34,8 +31,27 @@ def filter_links(link):
         return False
     return True
 
-filtered_links = [tag.get('href') for tag in filter(filter_links, links)]
+class Page:
+    def __init__(self, page_url):
+        if page_url.startswith('/'):
+            page_url = 'https://en.wikipedia.org' + page_url
+        self.page_url = page_url
 
-for link in filtered_links:
-    print(link)
-    
+        ## Get HTML
+
+        r = requests.get(self.page_url)
+        r.raise_for_status()
+
+        ## Parse HTML and get links
+        self.html = bs4.BeautifulSoup(r.text, features='html.parser')
+        self.links = list(set([tag.get('href') for tag in filter(filter_links, self.html.find_all('a'))]))
+
+        self.num_sub_pages = len(self.links)
+
+if __name__ == '__main__':
+    page = Page('https://en.wikipedia.org/wiki/Canon_law')
+    page2 = Page('
+    links = page.links
+    first_link = page.links[0]
+    num_links = page.num_sub_pages
+    page2 = Page(links[0])
