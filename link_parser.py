@@ -29,13 +29,19 @@ def filter_links(link):
         return False
     if link.get('href').lower().startswith('http'):
         return False
+    if link.get('href').lower().startswith('ftp'):
+        return False
     return True
 
 class Page:
     def __init__(self, page_url):
+        
         if page_url.startswith('/'):
             page_url = 'https://en.wikipedia.org' + page_url
         self.page_url = page_url
+        self.parent = ''
+        self.depth = 0
+        self.heuristic = 0
 
         ## Get HTML
 
@@ -50,7 +56,7 @@ class Page:
 
 if __name__ == '__main__':
     page = Page('https://en.wikipedia.org/wiki/Canon_law')
-    page2 = Page('
+    page2 = Page(' ')
     links = page.links
     first_link = page.links[0]
     num_links = page.num_sub_pages
