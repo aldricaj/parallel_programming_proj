@@ -54,6 +54,9 @@ class Page:
 
         self.num_sub_pages = len(self.links)
 
+def get_links(url):
+    return Page(url).links
+        
 if __name__ == '__main__':
     page = Page('https://en.wikipedia.org/wiki/Canon_law')
     page2 = Page(' ')
