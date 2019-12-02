@@ -2,9 +2,19 @@ import link_parser
 import multiprocessing as mp
 import time
 
+
 sharedList = []
-nextPage = None
-endPage = '/wiki/World_Trade_Organization'
+currentPage = None
+endPage = '/wiki/University_of_Utah_Honors_College'
+
+class Page:
+    def __init__(self, page_url):
+        self.page_url = page_url
+        self.parent = ''
+        self.depth = 0
+        self.heuristic = 0
+        self.links = getLinks(self.page_url)
+        self.num_sub_pages = len(self.links)
 
 def pathToPage(page):
     path = [page.page_url]
@@ -16,65 +26,64 @@ def pathToPage(page):
 def heuristic(page):
     return page.depth / page.num_sub_pages
 
-def parallelHeuristic(page):
+def getLinks(subpageLink):
+    return link_parser.get_links(subpageLink)
+
+def setParent(page, parent):
+    page.parent = parent
+    page.depth = parent.depth + 1
     page.heuristic = heuristic(page)
+
+def createSubpages(url):
+    page = Page(url)
+    page.links = getLinks(url)
+    page.num_sub_pages = len(page.links)
     return page
 
-def initSubpage(subpageLink):
-    page2 = link_parser.Page(subpageLink)
-    return page2
-
-def createSubpages(page, subpageLink):
-    page2 = initSubpage(subpageLink)
-    page2.parent = page
-    page2.depth = page.depth + 1
-    parallelHeuristic(page2)
-    return page2
+def log_result(results):
+    for result in results:
+        if result.page_url not in sharedList:
+            sharedList.append(result)
 
 def findPage(page):
-    if sharedList != []:
-        sharedList.sort(key=lambda x: x.heuristic)
-        nextPage = sharedList[0]
-        nextPageHeuristic = heuristic(nextPage)
-    else:
-        nextPage = link_parser.Page(page.links[0])
-        nextPageHeuristic = 1
+    pool = mp.Pool(mp.cpu_count())
+    [pool.map_async(createSubpages, page.links, callback = log_result)]
+    pool.close()
+    pool.join()
     
-    # This is where I am having trouble
-    # Removing these next three lines results in the serial code
-    #pool = mp.Pool(mp.cpu_count())
-    #results = [pool.apply(createSubpages, args=(page, subpageLink)) for subpageLink in page.links]
-    #print(results)
-     
-    # This for loop would be modified/removed with working parallel code   
-    for subpageLink in page.links:
-        page2 = createSubpages(page, subpageLink)
+    pool = mp.Pool(mp.cpu_count())
+    [pool.apply_async(setParent, args = (newPage, page)) for newPage in sharedList]
+    pool.close()
         
-        if endPage in page2.links:
-            print(pathToPage(page2))
-            return False
-        if heuristic(page2) < nextPageHeuristic:
-            nextPage = page2
-            nextPageHeuristic = heuristic(nextPage)
-        sharedList.append(page2)
-    
+    for subpage in sharedList:
+        for link in subpage.links:
+            if endPage == link:
+                print("SUCCESS")
+                print(pathToPage(subpage))
+                return False
+        
+    sharedList.sort(key=lambda x: x.heuristic)
+    nextPage = sharedList[0]
     for i in range(len(sharedList)-1):
         if sharedList[i].page_url == nextPage.page_url:
             sharedList.pop(i)
             break 
+    
     print(nextPage.page_url)
+    print(len(sharedList))
     return nextPage
 
 def main():
+    startURL = 'https://en.wikipedia.org/wiki/Handsfree'
     print("Number of processors: ", mp.cpu_count())
     start_time = time.time()
-
-    startURL = 'https://en.wikipedia.org/wiki/Handsfree'
-    page = link_parser.Page(startURL)
-    if endPage in page.links:
+    
+    sharedList = link_parser.get_links(startURL)
+    if endPage in sharedList:
         print('Starting page already contains the end page link')
         return
     
+    page = Page(startURL)
     while page:
         page = findPage(page)
      
