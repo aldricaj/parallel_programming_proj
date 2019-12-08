@@ -45,7 +45,7 @@ def findPage(page, endPage):
     return nextPage
 
 def checkArguments():
-    if (len(sys.argv) == 2):
+    if (len(sys.argv) == 3):
         return False
     return True
 
